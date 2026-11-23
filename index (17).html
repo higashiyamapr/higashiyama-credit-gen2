@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>HIGASHIYAMA CREDIT GENERATOR</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:'Noto Sans JP',sans-serif;background:#fff;color:#111;font-size:14px;max-width:390px;margin:0 auto;}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #e0e0e0;position:sticky;top:0;background:#fff;z-index:50;}
+.hdr-title{font-size:10px;letter-spacing:.18em;font-weight:700;text-transform:uppercase;}
+.hdr-sub{font-size:12px;color:#999;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hdr-btn{font-size:12px;color:#999;cursor:pointer;padding:4px 8px;border:1px solid #e0e0e0;border-radius:4px;background:#fff;}
+.screen{display:none;min-height:100vh;padding-bottom:80px;}
+.screen.active{display:block;}
+/* API key screen */
+.apikey-wrap{padding:40px 24px;}
+.apikey-wrap h2{font-size:20px;font-weight:700;margin-bottom:8px;}
+.apikey-wrap p{font-size:13px;color:#777;line-height:1.7;margin-bottom:20px;}
+.apikey-input{width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:12px;font-size:13px;font-family:monospace;outline:none;margin-bottom:10px;}
+.apikey-input:focus{border-color:#111;}
+.apikey-note{font-size:11px;color:#bbb;line-height:1.6;margin-top:10px;}
+/* proj */
+.proj-hero{padding:28px 20px 16px;border-bottom:1px solid #eee;}
+.proj-hero h2{font-size:22px;font-weight:700;margin-bottom:4px;}
+.proj-hero p{font-size:13px;color:#999;}
+.proj-list{padding:14px 16px;}
+.proj-card{border:1px solid #e0e0e0;border-radius:10px;padding:16px;margin-bottom:10px;cursor:pointer;position:relative;}
+.proj-card:active{background:#f5f5f5;}
+.proj-card-name{font-size:16px;font-weight:700;margin-bottom:2px;}
+.proj-card-date{font-size:11px;color:#999;margin-bottom:4px;}
+.proj-card-meta{font-size:12px;color:#bbb;}
+.proj-del{position:absolute;top:12px;right:12px;font-size:18px;color:#ccc;cursor:pointer;padding:4px;}
+.proj-add{border:1.5px dashed #ddd;border-radius:10px;padding:20px;text-align:center;cursor:pointer;color:#999;font-size:14px;}
+.caution-box{margin:14px 16px;background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:14px 16px;}
+.caution-box p{font-size:12px;color:#795548;line-height:1.7;margin:0;}
+.caution-box p+p{margin-top:10px;}
+/* bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:390px;background:#fff;border-top:1px solid #eee;display:flex;z-index:100;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 6px;cursor:pointer;color:#bbb;font-size:10px;gap:3px;}
+.nav-item.active{color:#111;}
+.nav-icon{font-size:20px;}
+.view{display:none;padding-bottom:80px;}
+.view.active{display:block;}
+.view-title{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:#999;padding:14px 16px 8px;}
+/* btn */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:10px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;}
+.btn:active{opacity:.7;}
+.btn-black{background:#111;color:#fff;}
+.btn-ghost{background:#fff;border:1.5px solid #e0e0e0;color:#666;}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px;}
+.btn-full{width:100%;}
+.btn:disabled{opacity:.4;pointer-events:none;}
+/* upload */
+.upload-box{background:#f8f8f8;border:1.5px dashed #ddd;border-radius:10px;padding:20px 16px;text-align:center;margin:0 16px 14px;cursor:pointer;}
+.upload-box-icon{font-size:26px;margin-bottom:5px;}
+.upload-box-t{font-size:14px;font-weight:700;margin-bottom:2px;}
+.upload-box-s{font-size:12px;color:#999;}
+#fileInput{display:none;}
+/* detecting banner */
+.detecting-banner{margin:0 16px 14px;background:#f5f5f5;border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;}
+.detecting-banner-t{font-size:13px;font-weight:700;}
+.detecting-banner-s{font-size:11px;color:#999;margin-top:2px;}
+/* photo grid */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:0 16px;margin-bottom:14px;}
+.ph-cell{position:relative;aspect-ratio:1;cursor:pointer;}
+.ph-img{width:100%;height:100%;object-fit:cover;border-radius:5px;display:block;}
+.ph-badge{position:absolute;bottom:3px;left:3px;right:3px;border-radius:3px;font-size:9px;padding:2px 4px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;background:rgba(0,0,0,.78);color:#fff;}
+.ph-badge.unassigned{background:rgba(180,180,180,.85);color:#555;}
+.ph-cell:active .ph-img{opacity:.7;}
+/* legend */
+.sr-legend{padding:0 16px 14px;}
+.sr-legend-title{font-size:11px;color:#999;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;}
+.sr-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.sr-tag{padding:4px 10px;border-radius:12px;border:1px solid #e0e0e0;font-size:12px;color:#555;}
+/* item scroll */
+.sr-scroll-wrap{overflow-x:auto;padding:0 16px 12px;display:flex;gap:12px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;}
+.sr-scroll-wrap::-webkit-scrollbar{display:none;}
+.sr-col{flex-shrink:0;width:300px;scroll-snap-align:start;}
+.sr-col-hdr{display:flex;align-items:center;gap:7px;margin-bottom:10px;padding:10px 12px;background:#f5f5f5;border-radius:8px;}
+.sr-col-name{flex:1;font-size:13px;font-weight:700;}
+.sr-col-count{font-size:11px;color:#999;}
+.item-card{border:1px solid #e8e8e8;border-radius:8px;padding:11px 12px;margin-bottom:8px;cursor:pointer;position:relative;transition:border-color .15s;}
+.item-card.sel{border-color:#111;background:#f9f9f9;}
+.item-chk{position:absolute;top:10px;right:10px;width:22px;height:22px;border:1.5px solid #ddd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;background:#fff;}
+.item-card.sel .item-chk{background:#111;border-color:#111;color:#fff;}
+.itag{display:inline-block;background:#ebebeb;border-radius:3px;padding:2px 7px;font-size:10px;color:#555;margin-bottom:4px;}
+.iname{font-size:14px;font-weight:700;margin-bottom:2px;padding-right:28px;}
+.iprice{font-size:13px;color:#555;margin-bottom:1px;}
+.ibrand{font-size:12px;color:#999;}
+.icontact{font-size:11px;color:#bbb;margin-top:2px;}
+.iedit-btn{margin-top:7px;}
+.idrawer{display:none;margin-top:8px;background:#efefef;border-radius:6px;padding:10px;}
+.idrawer.open{display:block;}
+.ifield{margin-bottom:6px;}
+.ifield label{font-size:10px;color:#777;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:2px;}
+.ifield input{width:100%;border:1px solid #e0e0e0;border-radius:4px;padding:6px 8px;font-size:12px;background:#fff;outline:none;font-family:inherit;}
+.ifield input:focus{border-color:#111;}
+.field-chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;margin-bottom:2px;}
+.field-chip{padding:3px 9px;border-radius:10px;border:1px solid #ddd;font-size:11px;cursor:pointer;background:#fff;color:#444;white-space:nowrap;}
+.field-chip:active{background:#111;color:#fff;border-color:#111;}
+.unread-box{background:#f8f8f8;border-radius:8px;padding:14px 12px;text-align:center;}
+.unread-box-t{font-size:12px;color:#999;margin-bottom:10px;line-height:1.7;}
+/* scroll dots */
+.scroll-dots{display:flex;justify-content:center;gap:5px;padding:4px 0 12px;}
+.sdot{width:6px;height:6px;border-radius:50%;background:#ddd;cursor:pointer;}
+.sdot.active{background:#111;}
+/* look */
+.look-card{border:1px solid #e0e0e0;border-radius:10px;padding:12px 14px;margin:0 16px 10px;}
+.look-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.look-name-input{border:none;font-size:16px;font-weight:700;background:transparent;width:140px;outline:none;font-family:inherit;}
+.look-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f0f0;}
+.look-row:last-of-type{border-bottom:none;}
+.ldr{font-size:18px;color:#ccc;padding:0 2px;}
+.linfo{flex:1;}
+.llabel{font-size:10px;color:#999;}
+.lname{font-size:13px;font-weight:600;}
+.lbrand{font-size:11px;color:#999;}
+.ldel{font-size:18px;color:#ccc;cursor:pointer;padding:0 4px;}
+.look-add-wrap{border-top:1px solid #f0f0f0;padding-top:8px;margin-top:4px;}
+.look-add-sel{width:100%;padding:8px;border:1.5px dashed #ddd;border-radius:6px;font-size:12px;color:#666;background:#fff;font-family:inherit;}
+.add-look-btn{margin:0 16px 16px;border:1.5px dashed #ddd;border-radius:10px;padding:14px;text-align:center;cursor:pointer;color:#999;font-size:13px;}
+/* credit */
+.nt-bar{display:flex;align-items:center;gap:8px;padding:10px 16px 8px;}
+.nt-label{font-size:12px;color:#999;}
+.nt-btn{padding:5px 16px;border-radius:20px;border:1.5px solid #e0e0e0;font-size:12px;cursor:pointer;background:#fff;color:#666;}
+.nt-btn.active{background:#111;color:#fff;border-color:#111;}
+.credit-block{border:1px solid #e8e8e8;border-radius:10px;margin:0 16px 10px;overflow:hidden;}
+.credit-look-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#999;padding:9px 14px 7px;background:#f8f8f8;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between;}
+.credit-edit{width:100%;border:1px solid #e0e0e0;border-radius:5px;padding:8px;font-size:13px;line-height:1.9;resize:vertical;min-height:80px;font-family:inherit;background:#f9f9f9;}
+.list-block{border:1px solid #e8e8e8;border-radius:10px;margin:0 16px 10px;overflow:hidden;}
+.list-block-title{font-size:10px;text-transform:uppercase;letter-spacing:.1em;font-weight:700;padding:9px 14px 7px;background:#f8f8f8;border-bottom:1px solid #f0f0f0;}
+.list-row{padding:10px 14px;border-bottom:1px solid #f5f5f5;font-size:12px;line-height:1.9;}
+.list-row:last-child{border-bottom:none;}
+.list-row strong{font-size:13px;display:block;}
+.list-copy{padding:9px 14px;}
+/* modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:16px 16px 0 0;padding:20px 20px 36px;width:100%;max-width:390px;max-height:85vh;overflow-y:auto;}
+.modal h3{font-size:16px;font-weight:700;margin-bottom:10px;}
+.modal-current{font-size:11px;color:#999;margin-bottom:10px;}
+.modal-current strong{color:#111;}
+.modal-hint{font-size:12px;color:#999;margin-bottom:8px;line-height:1.6;}
+.modal input[type=text]{width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:8px;font-family:inherit;outline:none;}
+.modal input[type=text]:focus{border-color:#111;}
+.modal input[type=date]{width:100%;border:1.5px solid #e0e0e0;border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:10px;font-family:inherit;}
+.modal-chips-label{font-size:10px;color:#999;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.modal-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.modal-chip{padding:6px 13px;border-radius:16px;border:1px solid #ddd;font-size:12px;cursor:pointer;background:#fff;color:#333;}
+.modal-chip.picked{background:#111;color:#fff;border-color:#111;}
+/* progress */
+.progress-bar-wrap{background:#eee;border-radius:4px;height:4px;margin:8px 0;}
+.progress-bar{height:4px;background:#111;border-radius:4px;width:0%;transition:width .3s;}
+/* toast */
+#toast{position:fixed;bottom:76px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:9px 20px;border-radius:20px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:999;white-space:nowrap;}
+#toast.show{opacity:1;}
+/* spinner */
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.15);border-top-color:#555;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* thumb row */
+.thumb-row{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap;}
+.thumb-mini{width:40px;height:40px;border-radius:4px;object-fit:cover;flex-shrink:0;}
+.thumb-mini-ph{width:40px;height:40px;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;}
+/* empty state */
+.empty-state{text-align:center;padding:40px 20px;color:#bbb;font-size:13px;}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- API KEY SCREEN -->
+<div id="apikeyScreen" class="screen active">
+  <div class="hdr">
+    <div class="hdr-title">HIGASHIYAMA CREDIT GENERATOR</div>
+  </div>
+  <div class="apikey-wrap">
+    <h2>APIキーを入力</h2>
+    <p>Gemini APIキーを入力してください。キーはこのブラウザのセッション中のみ保持され、外部に送信されることはありません。</p>
+    <input class="apikey-input" id="apikeyInput" type="password" placeholder="AIza...">
+    <button class="btn btn-black btn-full" onclick="saveApiKey()">設定して始める</button>
+    <div class="apikey-note">※ キーはページを閉じると消えます。毎回入力が必要です。</div>
+  </div>
+</div>
+
+<!-- PROJECT SCREEN -->
+<div id="projScreen" class="screen">
+  <div class="hdr">
+    <div class="hdr-title">HIGASHIYAMA CREDIT GENERATOR</div>
+    <div class="hdr-btn" onclick="goApiKey()">🔑 キー</div>
+  </div>
+  <div class="proj-hero">
+    <h2>企画を選ぶ</h2>
+    <p>撮影テーマごとに企画を管理します</p>
+  </div>
+  <div class="caution-box">
+    <p>⚠️ AIが読み間違えることがあります。クレジット提出前に必ずご確認ください。</p>
+    <p>データは消える場合があります。必ず毎回コピーして別の場所に保存してください。アプリ不具合の責任は負いかねます。</p>
+    <p>データはこのiPhoneのSafariにのみ保存されます。機種変更・ブラウザ変更では引き継がれません。</p>
+  </div>
+  <div class="proj-list" id="projList">
+    <!-- dynamically rendered -->
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div id="appScreen" class="screen">
+  <div class="hdr">
+    <div class="hdr-btn" onclick="goHome()">← 企画</div>
+    <div class="hdr-sub" id="appProjName"></div>
+    <div style="width:52px;"></div>
+  </div>
+
+  <!-- VIEW 1: 仕分け -->
+  <div class="view active" id="v1">
+    <div class="view-title">① 伝票の仕分け</div>
+    <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-box-icon">📸</div>
+      <div class="upload-box-t">伝票写真を追加</div>
+      <div class="upload-box-s">アルバムから複数選択できます</div>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" multiple>
+
+    <div class="detecting-banner" id="detectingBanner" style="display:none;">
+      <div style="font-size:22px;">🔍</div>
+      <div>
+        <div class="detecting-banner-t"><span class="spinner"></span>読み取り中...</div>
+        <div class="detecting-banner-s">伝票を解析しています</div>
+      </div>
+    </div>
+
+    <div id="v1PhotoArea"><!-- dynamically rendered --></div>
+
+    <div id="v1Actions" style="display:none;padding:0 16px 16px;">
+      <button class="btn btn-black btn-full" onclick="goV(2)">アイテムを読み取る →</button>
+    </div>
+  </div>
+
+  <!-- VIEW 2: アイテム -->
+  <div class="view" id="v2">
+    <div class="view-title">② アイテムの書き出し</div>
+    <div class="sr-scroll-wrap" id="srScroll" onscroll="updateDots()"></div>
+    <div class="scroll-dots" id="scrollDots"></div>
+    <div style="padding:0 16px 16px;">
+      <button class="btn btn-black btn-full" onclick="goV(3)">ルックに振り分ける →</button>
+    </div>
+  </div>
+
+  <!-- VIEW 3: ルック -->
+  <div class="view" id="v3">
+    <div class="view-title">③ ルック編成</div>
+    <div id="lookList"></div>
+    <div class="add-look-btn" onclick="addLook()">＋ ルックを追加</div>
+    <div style="padding:0 16px 16px;">
+      <button class="btn btn-black btn-full" onclick="buildCredits();goV(4)">クレジットを生成 →</button>
+    </div>
+  </div>
+
+  <!-- VIEW 4: クレジット -->
+  <div class="view" id="v4">
+    <div class="view-title">④ クレジット</div>
+    <div class="nt-bar">
+      <span class="nt-label">ブランド表記：</span>
+      <button class="nt-btn active" id="ntK" onclick="setNt('kana')">カナ</button>
+      <button class="nt-btn" id="ntA" onclick="setNt('alpha')">アルファベット</button>
+    </div>
+    <div style="font-size:11px;color:#999;padding:0 16px 10px;line-height:1.7;">1ルックをまとめて編集できます。不要な行は削除してください。「／ともに」なども手入力で。</div>
+    <div id="creditBlocks"></div>
+    <div style="padding:0 16px 10px;">
+      <button class="btn btn-black btn-full" onclick="copyAllCredits()">全ルックをコピー</button>
+    </div>
+    <div id="inquiryBlock"></div>
+    <div id="shippingBlock"></div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="nav-item active" id="n1" onclick="goV(1)"><span class="nav-icon">📄</span><span>仕分け</span></div>
+    <div class="nav-item" id="n2" onclick="goV(2)"><span class="nav-icon">📋</span><span>アイテム</span></div>
+    <div class="nav-item" id="n3" onclick="goV(3)"><span class="nav-icon">🗂</span><span>ルック</span></div>
+    <div class="nav-item" id="n4" onclick="goV(4)"><span class="nav-icon">✨</span><span>クレジット</span></div>
+  </div>
+</div>
+
+<!-- MODAL: 貸出先名修正 -->
+<div class="modal-bg" id="nameModal">
+  <div class="modal">
+    <h3>貸出先名を修正</h3>
+    <div class="modal-current">現在：<strong id="currentNameLabel"></strong></div>
+    <div class="modal-hint">正しい貸出先名を入力するか、候補から選んでください。</div>
+    <input type="text" id="srNameIn" placeholder="貸出先名を入力" autocomplete="off">
+    <div class="modal-chips-label">読み取った候補：</div>
+    <div class="modal-chips" id="nameModalChips"></div>
+    <button class="btn btn-black btn-full" onclick="confirmName()">この名前で割り当てる</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:6px;" onclick="closeModal('nameModal')">キャンセル</button>
+  </div>
+</div>
+
+<!-- MODAL: 企画作成 -->
+<div class="modal-bg" id="projModal">
+  <div class="modal">
+    <h3>新しい企画</h3>
+    <input type="text" id="projNameIn" placeholder="企画名（例：クロワッサン 2月号）">
+    <input type="date" id="projDateIn">
+    <button class="btn btn-black btn-full" onclick="confirmProj()">作成</button>
+    <button class="btn btn-ghost btn-full" style="margin-top:6px;" onclick="closeModal('projModal')">キャンセル</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// =====================================================================
+// STATE
+// =====================================================================
+var APP = {
+  apiKey: '',
+  currentProjId: null,
+  nameModalTargetPhotoIdx: null,
+  ntMode: 'kana' // 'kana' | 'alpha'
+};
+
+// =====================================================================
+// LOCALSTORAGE HELPERS
+// =====================================================================
+function saveProjects(projs) {
+  try { localStorage.setItem('hcg_projects', JSON.stringify(projs)); } catch(e) {}
+}
+function loadProjects() {
+  try { return JSON.parse(localStorage.getItem('hcg_projects') || '[]'); } catch(e) { return []; }
+}
+function saveProject(proj) {
+  var projs = loadProjects();
+  var idx = projs.findIndex(function(p){ return p.id === proj.id; });
+  if (idx >= 0) projs[idx] = proj;
+  else projs.push(proj);
+  saveProjects(projs);
+}
+function loadProject(id) {
+  return loadProjects().find(function(p){ return p.id === id; }) || null;
+}
+function getCurrentProject() {
+  return loadProject(APP.currentProjId);
+}
+function saveCurrentProject(proj) {
+  saveProject(proj);
+}
+
+// =====================================================================
+// GEMINI API
+// =====================================================================
+var GEMINI_MODEL = 'gemini-2.0-flash';
+var GEMINI_URL = '/api/gemini';
+
+function fileToBase64(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onload = function(e) { resolve(e.target.result.split(',')[1]); };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function geminiDetectCompanies(photosData) {
+  // photosData: [{base64, mimeType, idx}]
+  var parts = [];
+  parts.push({ text: 'これらは衣装レンタルの伝票写真です。各画像について、伝票のヘッダー・ロゴ・住所・会社名から「貸出先（ショールーム）の会社名」を読み取ってください。\n\n以下のJSON配列で返してください。各要素は {"imageIndex": 数字, "companyName": "会社名"} の形式。読み取れない場合は "companyName": "不明" としてください。\n\nJSON以外のテキストは不要です。必ずJSON配列のみ返してください。' });
+  photosData.forEach(function(p) {
+    parts.push({ inlineData: { mimeType: p.mimeType, data: p.base64 } });
+    parts.push({ text: '上の画像のインデックス: ' + p.idx });
+  });
+
+  var body = { contents: [{ parts: parts }], generationConfig: { temperature: 0.1 } };
+  var resp = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) {
+    var errText = await resp.text();
+    throw new Error('API ' + resp.status + ': ' + errText.slice(0,200));
+  }
+  var data = await resp.json();
+  var text = data.candidates[0].content.parts[0].text.trim();
+  // extract JSON
+  var match = text.match(/\[[\s\S]*\]/);
+  if (!match) throw new Error('JSON parse error: ' + text.slice(0,100));
+  return JSON.parse(match[0]);
+}
+
+async function geminiExtractItems(photosData, companyName) {
+  // photosData for one company
+  var parts = [];
+  parts.push({ text: '以下は「' + companyName + '」から借りた衣装の伝票写真です。伝票に記載されているアイテムを全て抽出してください。\n\n以下のJSON配列で返してください:\n[\n  {\n    "itemName": "アイテム名",\n    "category": "カテゴリ（アウター/トップス/ボトムス/ワンピース/シューズ/バッグ/アクセサリー/その他）",\n    "price": 数値（税込円、不明は0）,\n    "brandKana": "ブランド名カナ",\n    "brandAlpha": "ブランド名アルファベット",\n    "contactName": "問い合わせ先名",\n    "phone": "電話番号",\n    "address": "送本先住所"\n  }\n]\n\n候補のブランド名・問い合わせ先も別途リストアップしてください:\n{"brandCandidates": ["...", "..."], "contactCandidates": ["...", "..."]}\n\n最終的なレスポンス形式: {"items": [...], "brandCandidates": [...], "contactCandidates": [...]}\n\nJSON以外のテキストは不要です。' });
+  photosData.forEach(function(p, i) {
+    parts.push({ inlineData: { mimeType: p.mimeType, data: p.base64 } });
+  });
+
+  var body = { contents: [{ parts: parts }], generationConfig: { temperature: 0.1 } };
+  var resp = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!resp.ok) throw new Error('Gemini API error: ' + resp.status);
+  var data = await resp.json();
+  var text = data.candidates[0].content.parts[0].text.trim();
+  var match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('JSON parse error');
+  return JSON.parse(match[0]);
+}
+
+// =====================================================================
+// API KEY
+// =====================================================================
+function saveApiKey() {
+  var key = document.getElementById('apikeyInput').value.trim();
+  if (!key) { toast('APIキーを入力してください'); return; }
+  APP.apiKey = key;
+  sessionStorage.setItem('hcg_apikey', key);
+  showScreen('projScreen');
+  renderProjList();
+}
+function goApiKey() {
+  showScreen('apikeyScreen');
+}
+
+// =====================================================================
+// SCREENS
+// =====================================================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+// =====================================================================
+// PROJECT SCREEN
+// =====================================================================
+function renderProjList() {
+  var projs = loadProjects();
+  var container = document.getElementById('projList');
+  var html = '';
+  projs.forEach(function(p) {
+    var companyCount = Object.keys(p.companies || {}).length;
+    var itemCount = Object.values(p.companies || {}).reduce(function(sum, c){ return sum + (c.items || []).length; }, 0);
+    html += '<div class="proj-card" onclick="openProject(\'' + p.id + '\')">';
+    html += '<div class="proj-card-name">' + esc(p.name) + '</div>';
+    if (p.shootDate) html += '<div class="proj-card-date">📅 撮影日：' + esc(p.shootDate) + '</div>';
+    html += '<div class="proj-card-meta">ショールーム ' + companyCount + '社　アイテム ' + itemCount + '件</div>';
+    html += '<div class="proj-del" onclick="event.stopPropagation();deleteProject(\'' + p.id + '\')">×</div>';
+    html += '</div>';
+  });
+  html += '<div class="proj-add" onclick="openProjModal()"><div style="font-size:28px;margin-bottom:6px;">＋</div><div>新しい企画を作成</div></div>';
+  container.innerHTML = html;
+}
+
+function openProjModal() {
+  document.getElementById('projNameIn').value = '';
+  document.getElementById('projDateIn').value = '';
+  document.getElementById('projModal').classList.add('open');
+}
+
+function confirmProj() {
+  var name = document.getElementById('projNameIn').value.trim();
+  if (!name) { toast('企画名を入力してください'); return; }
+  var date = document.getElementById('projDateIn').value;
+  var proj = {
+    id: 'p' + Date.now(),
+    name: name,
+    shootDate: date,
+    photos: [],     // [{id, dataUrl, mimeType, companyName}]
+    companies: {},  // {companyName: {items:[], brandCandidates:[], contactCandidates:[], extracted:false}}
+    looks: [],      // [{id, name, itemIds:[]}]
+    ntMode: 'kana'
+  };
+  saveProject(proj);
+  closeModal('projModal');
+  toast(name + 'を作成しました');
+  renderProjList();
+}
+
+function deleteProject(id) {
+  if (!confirm('この企画を削除しますか？')) return;
+  var projs = loadProjects().filter(function(p){ return p.id !== id; });
+  saveProjects(projs);
+  renderProjList();
+}
+
+function openProject(id) {
+  APP.currentProjId = id;
+  var proj = loadProject(id);
+  document.getElementById('appProjName').textContent = proj.name;
+  showScreen('appScreen');
+  goV(1);
+  renderV1();
+}
+
+function goHome() {
+  showScreen('projScreen');
+  renderProjList();
+}
+
+// =====================================================================
+// VIEW 1: 仕分け
+// =====================================================================
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  var files = Array.from(e.target.files);
+  if (!files.length) return;
+  handlePhotosUpload(files);
+  e.target.value = '';
+});
+
+// iPhoneメモリ対策: FileReaderで読んでからリサイズ
+async function resizeAndConvert(file) {
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onerror = function() { reject(new Error('FileReader失敗: ' + file.name)); };
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onerror = function() { reject(new Error('Image load失敗')); };
+      img.onload = function() {
+        var MAX = 1024;
+        var w = img.width, h = img.height;
+        if (w > MAX || h > MAX) {
+          var s = Math.min(MAX/w, MAX/h);
+          w = Math.round(w * s);
+          h = Math.round(h * s);
+        }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        var b64 = dataUrl.split(',')[1];
+        resolve({ dataUrl: dataUrl, base64: b64, mimeType: 'image/jpeg' });
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    img.src = url;
+  });
+}
+
+async function handlePhotosUpload(files) {
+  var proj = getCurrentProject();
+  if (!proj) return;
+
+  var BATCH = 5; // iPhoneメモリ対策: 5枚ずつ処理
+  document.getElementById('detectingBanner').style.display = 'flex';
+  renderV1PhotoGrid(proj, true);
+
+  try {
+    var newPhotos = [];
+    // 5枚ずつ読み込み
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      toast((i+1) + '/' + files.length + '枚 読み込み中...');
+      var converted = await resizeAndConvert(f);
+      newPhotos.push({ id: 'ph' + Date.now() + i, dataUrl: converted.dataUrl, base64: converted.base64, mimeType: converted.mimeType, companyName: '判別中...' });
+      // メモリ解放のために少し待つ
+      if ((i+1) % BATCH === 0) await new Promise(function(r){ setTimeout(r, 100); });
+    }
+
+    proj.photos = (proj.photos || []).concat(newPhotos);
+    saveCurrentProject(proj);
+    renderV1PhotoGrid(proj, true);
+    toast('写真を読み込みました。会社名を判別中...');
+
+    // 会社名判別: 5枚ずつバッチ処理
+    var allResults = [];
+    for (var bi = 0; bi < newPhotos.length; bi += BATCH) {
+      var batch = newPhotos.slice(bi, bi + BATCH);
+      var pd = batch.map(function(p, j){ return { base64: p.base64, mimeType: p.mimeType, idx: bi + j }; });
+      var batchResults = await geminiDetectCompanies(pd);
+      allResults = allResults.concat(batchResults);
+    }
+
+    allResults.forEach(function(r) {
+      if (r.imageIndex < newPhotos.length) {
+        var ph = proj.photos.find(function(p){ return p.id === newPhotos[r.imageIndex].id; });
+        if (ph) ph.companyName = r.companyName || '不明';
+      }
+    });
+
+    proj.photos.forEach(function(ph) {
+      if (ph.companyName && ph.companyName !== '判別中...' && !proj.companies[ph.companyName]) {
+        proj.companies[ph.companyName] = { items: [], brandCandidates: [], contactCandidates: [], extracted: false };
+      }
+    });
+
+    saveCurrentProject(proj);
+    document.getElementById('detectingBanner').style.display = 'none';
+    renderV1();
+    toast('読み取り完了！');
+  } catch(e) {
+    document.getElementById('detectingBanner').style.display = 'none';
+    toast('エラー: ' + (e.message || '読み取りに失敗しました'));
+    renderV1();
+  }
+}
+
+function fileToDataUrl(file) {
+  return new Promise(function(resolve) {
+    var r = new FileReader();
+    r.onload = function(e){ resolve(e.target.result); };
+    r.readAsDataURL(file);
+  });
+}
+
+function renderV1() {
+  var proj = getCurrentProject();
+  if (!proj) return;
+  renderV1PhotoGrid(proj, false);
+  renderV1Legend(proj);
+  document.getElementById('v1Actions').style.display = proj.photos.length > 0 ? 'block' : 'none';
+}
+
+function renderV1PhotoGrid(proj, loading) {
+  var area = document.getElementById('v1PhotoArea');
+  if (!proj.photos || proj.photos.length === 0) {
+    area.innerHTML = '';
+    return;
+  }
+  var hint = loading ? '判別中...' : 'バッジをタップして貸出先名を修正できます';
+  var html = '<div style="font-size:11px;color:#999;padding:0 16px 8px;">' + proj.photos.length + '枚' + (loading ? '' : '　' + hint) + '</div>';
+  html += '<div class="photo-grid">';
+  proj.photos.forEach(function(ph, idx) {
+    var isUnknown = !ph.companyName || ph.companyName === '判別中...' || ph.companyName === '不明';
+    html += '<div class="ph-cell" onclick="openNameModal(' + idx + ')">';
+    html += '<img class="ph-img" src="' + ph.dataUrl + '" alt="">';
+    html += '<div class="ph-badge' + (isUnknown ? ' unassigned' : '') + '">' + esc(ph.companyName || '？') + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  area.innerHTML = html;
+}
+
+function renderV1Legend(proj) {
+  // company summary
+  var area = document.getElementById('v1PhotoArea');
+  if (!proj.photos || proj.photos.length === 0) return;
+  var counts = {};
+  proj.photos.forEach(function(ph) {
+    var cn = ph.companyName || '不明';
+    counts[cn] = (counts[cn] || 0) + 1;
+  });
+  var companies = Object.keys(counts);
+  if (companies.length === 0) return;
+  var html = area.innerHTML;
+  html += '<div class="sr-legend"><div class="sr-legend-title">貸出先一覧（' + companies.length + '社）</div><div class="sr-tags">';
+  companies.forEach(function(cn) {
+    html += '<div class="sr-tag">' + esc(cn) + ' <span style="color:#bbb;margin-left:3px;">' + counts[cn] + '枚</span></div>';
+  });
+  html += '</div></div>';
+  area.innerHTML = html;
+}
+
+// =====================================================================
+// NAME MODAL
+// =====================================================================
+function openNameModal(photoIdx) {
+  var proj = getCurrentProject();
+  if (!proj || !proj.photos[photoIdx]) return;
+  APP.nameModalTargetPhotoIdx = photoIdx;
+  var current = proj.photos[photoIdx].companyName || '不明';
+  document.getElementById('currentNameLabel').textContent = current;
+  document.getElementById('srNameIn').value = '';
+
+  // build chips from known companies
+  var companies = Object.keys(proj.companies || {});
+  // also from all photo company names
+  proj.photos.forEach(function(ph) {
+    if (ph.companyName && !companies.includes(ph.companyName)) companies.push(ph.companyName);
+  });
+  companies = companies.filter(function(c){ return c && c !== '判別中...' && c !== '不明'; });
+
+  var chipsHtml = '';
+  companies.forEach(function(c) {
+    chipsHtml += '<div class="modal-chip" onclick="pickModalChip(this,\'' + esc(c).replace(/'/g,"&#39;") + '\')">' + esc(c) + '</div>';
+  });
+  document.getElementById('nameModalChips').innerHTML = chipsHtml;
+  document.getElementById('nameModal').classList.add('open');
+}
+
+function pickModalChip(el, val) {
+  document.querySelectorAll('.modal-chip').forEach(function(c){ c.classList.remove('picked'); });
+  el.classList.add('picked');
+  document.getElementById('srNameIn').value = val;
+}
+
+function confirmName() {
+  var name = document.getElementById('srNameIn').value.trim();
+  if (!name) { toast('貸出先名を入力してください'); return; }
+  var proj = getCurrentProject();
+  if (proj && APP.nameModalTargetPhotoIdx !== null) {
+    proj.photos[APP.nameModalTargetPhotoIdx].companyName = name;
+    if (!proj.companies[name]) {
+      proj.companies[name] = { items: [], brandCandidates: [], contactCandidates: [], extracted: false };
+    }
+    saveCurrentProject(proj);
+  }
+  closeModal('nameModal');
+  renderV1();
+  toast('「' + name + '」に修正しました');
+}
+
+// =====================================================================
+// VIEW 2: アイテム
+// =====================================================================
+function renderV2() {
+  var proj = getCurrentProject();
+  if (!proj) return;
+
+  var companies = getCompanyList(proj);
+  var scrollWrap = document.getElementById('srScroll');
+  var dotsWrap = document.getElementById('scrollDots');
+
+  if (companies.length === 0) {
+    scrollWrap.innerHTML = '<div class="empty-state">先に仕分けを完了してください</div>';
+    dotsWrap.innerHTML = '';
+    return;
+  }
+
+  var colsHtml = '';
+  companies.forEach(function(cn, ci) {
+    var cd = proj.companies[cn] || {};
+    var photos = proj.photos.filter(function(ph){ return ph.companyName === cn; });
+    colsHtml += '<div class="sr-col">';
+    colsHtml += '<div class="sr-col-hdr"><div class="sr-col-name">' + esc(cn) + '</div>';
+    colsHtml += '<div class="sr-col-count">' + (cd.extracted ? (cd.items || []).length + '件' : '未読み取り') + '</div></div>';
+
+    // thumbnails
+    colsHtml += '<div class="thumb-row">';
+    photos.forEach(function(ph) {
+      colsHtml += '<img class="thumb-mini" src="' + ph.dataUrl + '" alt="">';
+    });
+    colsHtml += '</div>';
+
+    if (!cd.extracted) {
+      colsHtml += '<div class="unread-box"><div class="unread-box-t">この貸出先の伝票' + photos.length + '枚を読み取ります</div>';
+      colsHtml += '<button class="btn btn-black btn-sm btn-full" onclick="extractItems(\'' + esc(cn).replace(/'/g,"&#39;") + '\')">📖 読み取る（' + photos.length + '枚）</button></div>';
+    } else {
+      colsHtml += '<button class="btn btn-ghost btn-sm" style="margin-bottom:10px;" onclick="extractItems(\'' + esc(cn).replace(/'/g,"&#39;") + '\')">再読み取り</button>';
+      (cd.items || []).forEach(function(item, ii) {
+        colsHtml += renderItemCard(item, cn, ii);
+      });
+    }
+    colsHtml += '</div>';
+  });
+
+  scrollWrap.innerHTML = colsHtml;
+
+  // dots
+  var dotsHtml = '';
+  companies.forEach(function(cn, ci) {
+    dotsHtml += '<div class="sdot' + (ci===0?' active':'') + '" onclick="scrollToCol(' + ci + ')"></div>';
+  });
+  dotsWrap.innerHTML = dotsHtml;
+}
+
+function getCompanyList(proj) {
+  var seen = {};
+  var list = [];
+  (proj.photos || []).forEach(function(ph) {
+    var cn = ph.companyName;
+    if (cn && cn !== '判別中...' && cn !== '不明' && !seen[cn]) {
+      seen[cn] = true;
+      list.push(cn);
+    }
+  });
+  return list;
+}
+
+function renderItemCard(item, companyName, idx) {
+  var id = 'item_' + companyName.replace(/\s/g,'_') + '_' + idx;
+  var html = '<div class="item-card sel" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
+  html += '<div class="item-chk">✓</div>';
+  html += '<div class="itag">' + esc(item.category || 'アイテム') + '</div>';
+  html += '<div class="iname">' + esc(item.itemName || '') + '</div>';
+  html += '<div class="iprice">' + (item.price ? '¥' + Number(item.price).toLocaleString() : '') + '</div>';
+  html += '<div class="ibrand">' + esc(item.brandAlpha || '') + (item.brandAlpha && item.brandKana ? ' / ' : '') + esc(item.brandKana || '') + '</div>';
+  html += '<div class="icontact">' + esc(item.contactName || '') + (item.phone ? ' ☎' + esc(item.phone) : '') + '</div>';
+  html += '<div class="iedit-btn"><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleDrawerById(\'drawer_' + id + '\')">✏️ 編集</button></div>';
+  html += '<div class="idrawer" id="drawer_' + id + '">';
+  html += itemField('アイテム名', 'itemName', item.itemName || '', id, []);
+  html += itemField('価格', 'price', item.price || '', id, []);
+  var cd = {};
+  try { cd = getCurrentProject().companies[companyName] || {}; } catch(e){}
+  html += itemField('ブランド（カナ）', 'brandKana', item.brandKana || '', id, cd.brandCandidates || []);
+  html += itemField('ブランド（アルファ）', 'brandAlpha', item.brandAlpha || '', id, cd.brandCandidates || []);
+  html += itemField('問い合わせ先', 'contactName', item.contactName || '', id, cd.contactCandidates || []);
+  html += itemField('電話番号', 'phone', item.phone || '', id, []);
+  html += itemField('送本先住所', 'address', item.address || '', id, []);
+  html += '<button class="btn btn-black btn-sm" style="margin-top:6px;width:100%;" onclick="saveItemEdits(\'' + esc(companyName).replace(/'/g,"&#39;") + '\',' + idx + ',\'drawer_' + id + '\')">保存</button>';
+  html += '</div></div>';
+  return html;
+}
+
+function itemField(label, field, value, id, candidates) {
+  var fid = 'f_' + id + '_' + field;
+  var cid = 'chips_' + id + '_' + field;
+  var html = '<div class="ifield"><label>' + label + '</label>';
+  html += '<input id="' + fid + '" value="' + esc(value) + '"' + (candidates.length ? ' onfocus="showChips(\'' + cid + '\')"' : '') + '>';
+  if (candidates.length) {
+    html += '<div class="field-chips" id="' + cid + '" style="display:none;">';
+    candidates.forEach(function(c) {
+      html += '<div class="field-chip" onclick="pickChip(\'' + fid + '\',\'' + esc(c).replace(/'/g,"&#39;") + '\',\'' + cid + '\')">' + esc(c) + '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+  return html;
+}
+
+async function extractItems(companyName) {
+  var proj = getCurrentProject();
+  if (!proj) return;
+  var photos = proj.photos.filter(function(ph){ return ph.companyName === companyName; });
+  if (!photos.length) { toast('この貸出先の写真がありません'); return; }
+
+  toast(companyName + ' の伝票を読み取り中...');
+  try {
+    var photosData = photos.map(function(ph){ return { base64: ph.base64, mimeType: ph.mimeType }; });
+    var result = await geminiExtractItems(photosData, companyName);
+    proj = getCurrentProject(); // reload
+    if (!proj.companies[companyName]) proj.companies[companyName] = {};
+    proj.companies[companyName].items = result.items || [];
+    proj.companies[companyName].brandCandidates = result.brandCandidates || [];
+    proj.companies[companyName].contactCandidates = result.contactCandidates || [];
+    proj.companies[companyName].extracted = true;
+    saveCurrentProject(proj);
+    renderV2();
+    toast(companyName + ' の読み取り完了：' + (result.items || []).length + '件');
+  } catch(e) {
+    toast('エラー: ' + (e.message || '読み取りに失敗しました'));
+  }
+}
+
+function saveItemEdits(companyName, idx, drawerId) {
+  var proj = getCurrentProject();
+  var id = drawerId.replace('drawer_', '');
+  var fields = ['itemName','price','brandKana','brandAlpha','contactName','phone','address'];
+  var item = proj.companies[companyName].items[idx] || {};
+  fields.forEach(function(f) {
+    var el = document.getElementById('f_' + id + '_' + f);
+    if (el) item[f] = el.value.trim();
+  });
+  if (item.price) item.price = parseInt(item.price) || 0;
+  proj.companies[companyName].items[idx] = item;
+  saveCurrentProject(proj);
+  document.getElementById(drawerId).classList.remove('open');
+  toast('保存しました');
+}
+
+function showChips(cid) {
+  var el = document.getElementById(cid);
+  if (el) el.style.display = 'flex';
+}
+function pickChip(inputId, val, chipsId) {
+  var inp = document.getElementById(inputId);
+  if (inp) inp.value = val;
+  var el = document.getElementById(chipsId);
+  if (el) el.style.display = 'none';
+  toast('「' + val + '」を選択');
+}
+function toggleItem(cardId) {
+  var card = document.getElementById(cardId);
+  if (!card) return;
+  card.classList.toggle('sel');
+  var chk = card.querySelector('.item-chk');
+  if (chk) chk.textContent = card.classList.contains('sel') ? '✓' : '';
+}
+function toggleDrawerById(drawerId) {
+  var d = document.getElementById(drawerId);
+  if (d) d.classList.toggle('open');
+}
+function updateDots() {
+  var wrap = document.getElementById('srScroll');
+  var idx = Math.round(wrap.scrollLeft / 312);
+  document.querySelectorAll('.sdot').forEach(function(d, i){ d.classList.toggle('active', i===idx); });
+}
+function scrollToCol(i) { document.getElementById('srScroll').scrollTo({ left: i*312, behavior: 'smooth' }); }
+
+// =====================================================================
+// VIEW 3: ルック
+// =====================================================================
+function renderV3() {
+  var proj = getCurrentProject();
+  if (!proj) return;
+  if (!proj.looks || proj.looks.length === 0) {
+    // auto-create LOOK 1
+    proj.looks = [{ id: 'look_' + Date.now(), name: 'LOOK 1', itemIds: [] }];
+    saveCurrentProject(proj);
+  }
+
+  // collect all selected items
+  var allItems = getAllItems(proj);
+
+  var html = '';
+  proj.looks.forEach(function(look, li) {
+    html += '<div class="look-card">';
+    html += '<div class="look-hdr">';
+    html += '<input class="look-name-input" value="' + esc(look.name) + '" onchange="renameLook(\'' + look.id + '\',this.value)">';
+    html += '<button class="btn btn-ghost btn-sm" onclick="deleteLook(\'' + look.id + '\')">削除</button>';
+    html += '</div>';
+
+    var lookItems = look.itemIds.map(function(iid){ return allItems.find(function(x){ return x._id === iid; }); }).filter(Boolean);
+    lookItems.forEach(function(item, ii) {
+      html += '<div class="look-row">';
+      html += '<span class="ldr">⠿</span>';
+      html += '<div class="linfo"><div class="llabel">' + esc(item.category || '') + '</div>';
+      html += '<div class="lname">' + esc(item.itemName || '') + '</div>';
+      html += '<div class="lbrand">' + esc(item.brandKana || item.brandAlpha || '') + '</div></div>';
+      html += '<span class="ldel" onclick="removeFromLook(\'' + look.id + '\',\'' + item._id + '\')">×</span>';
+      html += '</div>';
+    });
+
+    html += '<div class="look-add-wrap"><select class="look-add-sel" onchange="addToLook(\'' + look.id + '\',this)">';
+    html += '<option value="">＋ アイテムを追加...</option>';
+    allItems.filter(function(it){ return !look.itemIds.includes(it._id); }).forEach(function(it) {
+      html += '<option value="' + it._id + '">【' + esc(it._company) + '】' + esc(it.itemName || '') + (it.brandKana ? ' / ' + esc(it.brandKana) : '') + '</option>';
+    });
+    html += '</select></div>';
+    html += '</div>';
+  });
+
+  document.getElementById('lookList').innerHTML = html;
+}
+
+function getAllItems(proj) {
+  var items = [];
+  Object.keys(proj.companies || {}).forEach(function(cn) {
+    (proj.companies[cn].items || []).forEach(function(item, idx) {
+      items.push(Object.assign({}, item, { _id: cn + '::' + idx, _company: cn }));
+    });
+  });
+  return items;
+}
+
+function addLook() {
+  var proj = getCurrentProject();
+  proj.looks = proj.looks || [];
+  proj.looks.push({ id: 'look_' + Date.now(), name: 'LOOK ' + (proj.looks.length + 1), itemIds: [] });
+  saveCurrentProject(proj);
+  renderV3();
+}
+
+function deleteLook(lookId) {
+  var proj = getCurrentProject();
+  proj.looks = (proj.looks || []).filter(function(l){ return l.id !== lookId; });
+  saveCurrentProject(proj);
+  renderV3();
+  toast('削除しました');
+}
+
+function renameLook(lookId, name) {
+  var proj = getCurrentProject();
+  var look = (proj.looks || []).find(function(l){ return l.id === lookId; });
+  if (look) { look.name = name; saveCurrentProject(proj); }
+}
+
+function addToLook(lookId, sel) {
+  var iid = sel.value;
+  if (!iid) return;
+  var proj = getCurrentProject();
+  var look = (proj.looks || []).find(function(l){ return l.id === lookId; });
+  if (look && !look.itemIds.includes(iid)) {
+    look.itemIds.push(iid);
+    saveCurrentProject(proj);
+  }
+  sel.value = '';
+  renderV3();
+  toast('アイテムを追加しました');
+}
+
+function removeFromLook(lookId, iid) {
+  var proj = getCurrentProject();
+  var look = (proj.looks || []).find(function(l){ return l.id === lookId; });
+  if (look) {
+    look.itemIds = look.itemIds.filter(function(x){ return x !== iid; });
+    saveCurrentProject(proj);
+    renderV3();
+  }
+}
+
+// =====================================================================
+// VIEW 4: クレジット
+// =====================================================================
+var ntMode = 'kana';
+
+function buildCredits() {
+  var proj = getCurrentProject();
+  if (!proj) return;
+  var allItems = getAllItems(proj);
+  var html = '';
+
+  (proj.looks || []).forEach(function(look, li) {
+    var lookItems = look.itemIds.map(function(iid){ return allItems.find(function(x){ return x._id === iid; }); }).filter(Boolean);
+    // group by contactName
+    var groups = groupByContact(lookItems);
+    var text = buildCreditText(groups, ntMode);
+
+    html += '<div class="credit-block">';
+    html += '<div class="credit-look-label"><span>' + esc(look.name) + '</span>';
+    html += '<button class="btn btn-ghost btn-sm" onclick="copyCreditLook(\'cta_' + li + '\')" style="font-size:11px;padding:3px 10px;">まとめてコピー</button></div>';
+    html += '<div style="padding:12px 14px;">';
+    html += '<textarea class="credit-edit" id="cta_' + li + '" style="min-height:' + Math.max(80, text.split('\n').length * 28) + 'px;">' + esc(text) + '</textarea>';
+    html += '<div style="font-size:11px;color:#bbb;margin-top:5px;">自由に編集できます。「／ともに」なども手入力で。</div>';
+    html += '</div></div>';
+  });
+
+  document.getElementById('creditBlocks').innerHTML = html;
+
+  // inquiry list
+  buildInquiryList(proj, allItems);
+  buildShippingList(proj, allItems);
+}
+
+function groupByContact(items) {
+  var groups = [];
+  var seen = {};
+  items.forEach(function(item) {
+    var key = (item.contactName || '') + '|' + (ntMode === 'kana' ? (item.brandKana || '') : (item.brandAlpha || ''));
+    if (!seen[key]) {
+      seen[key] = { items: [], contactName: item.contactName || '', brandKana: item.brandKana || '', brandAlpha: item.brandAlpha || '' };
+      groups.push(seen[key]);
+    }
+    seen[key].items.push(item);
+  });
+  return groups;
+}
+
+function buildCreditText(groups, mode) {
+  var lines = [];
+  groups.forEach(function(g, gi) {
+    if (gi > 0) lines.push(''); // blank between different brand groups
+    g.items.forEach(function(item) {
+      var price = item.price ? '　¥' + Number(item.price).toLocaleString() : '';
+      lines.push(esc2(item.category || item.itemName || '') + price);
+    });
+    var brand = mode === 'kana' ? g.brandKana : g.brandAlpha;
+    if (brand) lines.push(esc2(brand));
+    if (g.contactName) lines.push(esc2(g.contactName));
+  });
+  return lines.join('\n');
+}
+
+function buildInquiryList(proj, allItems) {
+  var contacts = {};
+  allItems.forEach(function(item) {
+    if (item.contactName && item.phone) {
+      contacts[item.contactName] = item.phone;
+    }
+  });
+  var keys = Object.keys(contacts);
+  if (!keys.length) { document.getElementById('inquiryBlock').innerHTML = ''; return; }
+  var html = '<div class="list-block"><div class="list-block-title">📞 問い合わせ先</div>';
+  keys.forEach(function(k) {
+    html += '<div class="list-row"><strong>' + esc(k) + '</strong>☎ ' + esc(contacts[k]) + '</div>';
+  });
+  html += '<div class="list-copy"><button class="btn btn-ghost btn-sm" onclick="copyInquiry()">全コピー</button></div></div>';
+  document.getElementById('inquiryBlock').innerHTML = html;
+  // store for copy
+  document.getElementById('inquiryBlock').dataset.text = keys.map(function(k){ return k + '\n' + contacts[k]; }).join('\n\n');
+}
+
+function buildShippingList(proj, allItems) {
+  var addresses = {};
+  allItems.forEach(function(item) {
+    if (item.contactName && item.address) {
+      addresses[item.contactName] = item.address;
+    }
+  });
+  var keys = Object.keys(addresses);
+  if (!keys.length) { document.getElementById('shippingBlock').innerHTML = ''; return; }
+  var html = '<div class="list-block"><div class="list-block-title">📦 送本先</div>';
+  keys.forEach(function(k) {
+    html += '<div class="list-row"><strong>' + esc(k) + '</strong>' + esc(addresses[k]) + '</div>';
+  });
+  html += '<div class="list-copy"><button class="btn btn-ghost btn-sm" onclick="copyShipping()">全コピー</button></div></div>';
+  document.getElementById('shippingBlock').innerHTML = html;
+  document.getElementById('shippingBlock').dataset.text = keys.map(function(k){ return k + '\n' + addresses[k]; }).join('\n\n');
+}
+
+function setNt(mode) {
+  ntMode = mode;
+  document.getElementById('ntK').classList.toggle('active', mode==='kana');
+  document.getElementById('ntA').classList.toggle('active', mode==='alpha');
+  buildCredits();
+}
+
+function copyCreditLook(id) {
+  var txt = document.getElementById(id).value;
+  copyText(txt, 'コピーしました！');
+}
+
+function copyAllCredits() {
+  var proj = getCurrentProject();
+  var parts = [];
+  (proj.looks || []).forEach(function(look, li) {
+    var ta = document.getElementById('cta_' + li);
+    if (ta) parts.push(look.name + '\n' + ta.value);
+  });
+  copyText(parts.join('\n\n'), '全ルックをコピーしました！');
+}
+
+function copyInquiry() {
+  var el = document.getElementById('inquiryBlock');
+  copyText(el.dataset.text || '', 'コピーしました！');
+}
+function copyShipping() {
+  var el = document.getElementById('shippingBlock');
+  copyText(el.dataset.text || '', 'コピーしました！');
+}
+
+function copyText(txt, msg) {
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(function(){ toast(msg); }).catch(function(){ fallbackCopy(txt); toast(msg); });
+  } else {
+    fallbackCopy(txt);
+    toast(msg);
+  }
+}
+function fallbackCopy(txt) {
+  var ta = document.createElement('textarea');
+  ta.value = txt;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+}
+
+// =====================================================================
+// NAVIGATION
+// =====================================================================
+function goV(n) {
+  document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+  document.querySelectorAll('.nav-item').forEach(function(v){ v.classList.remove('active'); });
+  document.getElementById('v'+n).classList.add('active');
+  document.getElementById('n'+n).classList.add('active');
+  if (n===2) renderV2();
+  if (n===3) renderV3();
+  if (n===4) buildCredits();
+}
+
+// =====================================================================
+// MODAL HELPERS
+// =====================================================================
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// close modal on background tap
+document.querySelectorAll('.modal-bg').forEach(function(bg) {
+  bg.addEventListener('click', function(e) {
+    if (e.target === bg) closeModal(bg.id);
+  });
+});
+
+// =====================================================================
+// TOAST
+// =====================================================================
+function toast(msg) {
+  var el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(function(){ el.classList.remove('show'); }, 2200);
+}
+
+// =====================================================================
+// UTILS
+// =====================================================================
+function esc(str) {
+  return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function esc2(str) {
+  return String(str || '');
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+(function init() {
+  // Vercel版: APIキー不要（サーバーサイドで管理）
+  showScreen('projScreen');
+  renderProjList();
+})();
+</script>
+</body>
+</html>
