@@ -348,7 +348,7 @@ function saveCurrentProject(proj) {
 // =====================================================================
 // GEMINI API
 // =====================================================================
-var GEMINI_MODEL = 'gemini-2.0-flash';
+var GEMINI_MODEL = 'gemini-2.5-flash';
 var GEMINI_URL = '/api/gemini';
 
 function fileToBase64(file) {
@@ -572,7 +572,6 @@ async function handlePhotosUpload(files) {
       var batchResults = await geminiDetectCompanies(pd);
       allResults = allResults.concat(batchResults);
     }
-toast('判別結果: ' + JSON.stringify(batchResults).slice(0,100));
     allResults.forEach(function(r) {
       if (r.imageIndex < newPhotos.length) {
         var ph = proj.photos.find(function(p){ return p.id === newPhotos[r.imageIndex].id; });
