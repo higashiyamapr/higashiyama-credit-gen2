@@ -316,14 +316,25 @@ var APP = {
   apiKey: '',
   currentProjId: null,
   nameModalTargetPhotoIdx: null,
-  ntMode: 'kana' // 'kana' | 'alpha'
+  ntMode: 'kana', // 'kana' | 'alpha'
+  photosCache: {} // {projId: [{id, dataUrl, base64, mimeType, companyName}]} — メモリ内のみ
 };
 
 // =====================================================================
 // LOCALSTORAGE HELPERS
+// 写真データ(base64)は重いのでlocalStorageには保存しない
+// 会社名・アイテム・ルックのみ保存
 // =====================================================================
 function saveProjects(projs) {
-  try { localStorage.setItem('hcg_projects', JSON.stringify(projs)); } catch(e) {}
+  // 写真のbase64/dataUrlを除いて保存
+  var light = projs.map(function(p) {
+    var copy = Object.assign({}, p);
+    copy.photos = (p.photos || []).map(function(ph) {
+      return { id: ph.id, companyName: ph.companyName, mimeType: ph.mimeType };
+    });
+    return copy;
+  });
+  try { localStorage.setItem('hcg_projects', JSON.stringify(light)); } catch(e) {}
 }
 function loadProjects() {
   try { return JSON.parse(localStorage.getItem('hcg_projects') || '[]'); } catch(e) { return []; }
@@ -336,12 +347,22 @@ function saveProject(proj) {
   saveProjects(projs);
 }
 function loadProject(id) {
-  return loadProjects().find(function(p){ return p.id === id; }) || null;
+  var proj = loadProjects().find(function(p){ return p.id === id; }) || null;
+  if (!proj) return null;
+  // メモリキャッシュから写真データを復元
+  var cached = APP.photosCache[id] || [];
+  proj.photos = (proj.photos || []).map(function(ph) {
+    var full = cached.find(function(c){ return c.id === ph.id; });
+    return full ? full : ph;
+  });
+  return proj;
 }
 function getCurrentProject() {
   return loadProject(APP.currentProjId);
 }
 function saveCurrentProject(proj) {
+  // メモリキャッシュに写真データを保存
+  APP.photosCache[proj.id] = (proj.photos || []).slice();
   saveProject(proj);
 }
 
@@ -554,7 +575,11 @@ async function handlePhotosUpload(files) {
       var f = files[i];
       toast((i+1) + '/' + files.length + '枚 読み込み中...');
       var converted = await resizeAndConvert(f);
-      newPhotos.push({ id: 'ph' + Date.now() + i, dataUrl: converted.dataUrl, base64: converted.base64, mimeType: converted.mimeType, companyName: '判別中...' });
+      var photoId = 'ph' + Date.now() + i;
+      newPhotos.push({ id: photoId, dataUrl: converted.dataUrl, base64: converted.base64, mimeType: converted.mimeType, companyName: '判別中...' });
+      // メモリキャッシュに直接追加（localStorageには保存しない）
+      if (!APP.photosCache[proj.id]) APP.photosCache[proj.id] = [];
+      APP.photosCache[proj.id].push({ id: photoId, dataUrl: converted.dataUrl, base64: converted.base64, mimeType: converted.mimeType, companyName: '判別中...' });
       // メモリ解放のために少し待つ
       if ((i+1) % BATCH === 0) await new Promise(function(r){ setTimeout(r, 100); });
     }
@@ -574,8 +599,12 @@ async function handlePhotosUpload(files) {
     }
     allResults.forEach(function(r) {
       if (r.imageIndex < newPhotos.length) {
-        var ph = proj.photos.find(function(p){ return p.id === newPhotos[r.imageIndex].id; });
+        var targetId = newPhotos[r.imageIndex].id;
+        var ph = proj.photos.find(function(p){ return p.id === targetId; });
         if (ph) ph.companyName = r.companyName || '不明';
+        // メモリキャッシュも更新
+        var cached = (APP.photosCache[proj.id] || []).find(function(c){ return c.id === targetId; });
+        if (cached) cached.companyName = r.companyName || '不明';
       }
     });
 
@@ -583,12 +612,23 @@ async function handlePhotosUpload(files) {
       if (ph.companyName && ph.companyName !== '判別中...' && !proj.companies[ph.companyName]) {
         proj.companies[ph.companyName] = { items: [], brandCandidates: [], contactCandidates: [], extracted: false };
       }
+      // キャッシュの会社名も最終更新
+      var cached = (APP.photosCache[proj.id] || []).find(function(c){ return c.id === ph.id; });
+      if (cached) cached.companyName = ph.companyName;
     });
 
     saveCurrentProject(proj);
     document.getElementById('detectingBanner').style.display = 'none';
-    renderV1();
-    toast('読み取り完了！');
+    // renderV1はlocalStorageから再読込するので、直接描画する
+    renderV1PhotoGrid(proj, false);
+    renderV1Legend(proj);
+    document.getElementById('v1Actions').style.display = proj.photos.length > 0 ? 'block' : 'none';
+    var unknownCount = proj.photos.filter(function(ph){ return !ph.companyName || ph.companyName === '不明' || ph.companyName === '判別中...'; }).length;
+    if (unknownCount > 0) {
+      toast('読み取り完了！写真をタップして貸出先名を入力してください');
+    } else {
+      toast('読み取り完了！');
+    }
   } catch(e) {
     document.getElementById('detectingBanner').style.display = 'none';
     toast('エラー: ' + (e.message || '読み取りに失敗しました'));
@@ -607,6 +647,14 @@ function fileToDataUrl(file) {
 function renderV1() {
   var proj = getCurrentProject();
   if (!proj) return;
+  // dataUrlがない写真にキャッシュから復元
+  var cached = APP.photosCache[proj.id] || [];
+  proj.photos.forEach(function(ph) {
+    if (!ph.dataUrl) {
+      var c = cached.find(function(c){ return c.id === ph.id; });
+      if (c && c.dataUrl) { ph.dataUrl = c.dataUrl; ph.base64 = c.base64; }
+    }
+  });
   renderV1PhotoGrid(proj, false);
   renderV1Legend(proj);
   document.getElementById('v1Actions').style.display = proj.photos.length > 0 ? 'block' : 'none';
@@ -695,10 +743,14 @@ function confirmName() {
       proj.companies[name] = { items: [], brandCandidates: [], contactCandidates: [], extracted: false };
     }
     saveCurrentProject(proj);
+    closeModal('nameModal');
+    renderV1PhotoGrid(proj, false);
+    renderV1Legend(proj);
+    document.getElementById('v1Actions').style.display = 'block';
+    toast('「' + name + '」に修正しました');
+  } else {
+    closeModal('nameModal');
   }
-  closeModal('nameModal');
-  renderV1();
-  toast('「' + name + '」に修正しました');
 }
 
 // =====================================================================
@@ -707,6 +759,14 @@ function confirmName() {
 function renderV2() {
   var proj = getCurrentProject();
   if (!proj) return;
+  // dataUrlがない写真にキャッシュから復元
+  var cached = APP.photosCache[proj.id] || [];
+  proj.photos.forEach(function(ph) {
+    if (!ph.dataUrl || !ph.base64) {
+      var c = cached.find(function(c){ return c.id === ph.id; });
+      if (c) { ph.dataUrl = c.dataUrl; ph.base64 = c.base64; }
+    }
+  });
 
   var companies = getCompanyList(proj);
   var scrollWrap = document.getElementById('srScroll');
@@ -760,7 +820,7 @@ function getCompanyList(proj) {
   var list = [];
   (proj.photos || []).forEach(function(ph) {
     var cn = ph.companyName;
-    if (cn && cn !== '判別中...' && cn !== '不明' && !seen[cn]) {
+    if (cn && cn !== '判別中...' && !seen[cn]) {
       seen[cn] = true;
       list.push(cn);
     }
@@ -819,7 +879,7 @@ async function extractItems(companyName) {
   try {
     var photosData = photos.map(function(ph){ return { base64: ph.base64, mimeType: ph.mimeType }; });
     var result = await geminiExtractItems(photosData, companyName);
-    proj = getCurrentProject(); // reload
+    // getCurrentProject()はlocalStorageから読むのでbase64が消える→再取得しない
     if (!proj.companies[companyName]) proj.companies[companyName] = {};
     proj.companies[companyName].items = result.items || [];
     proj.companies[companyName].brandCandidates = result.brandCandidates || [];
