@@ -738,9 +738,16 @@ function confirmName() {
   if (!name) { toast('貸出先名を入力してください'); return; }
   var proj = getCurrentProject();
   if (proj && APP.nameModalTargetPhotoIdx !== null) {
+    var oldName = proj.photos[APP.nameModalTargetPhotoIdx].companyName;
     proj.photos[APP.nameModalTargetPhotoIdx].companyName = name;
+    // 新しい会社名のエントリを作成
     if (!proj.companies[name]) {
       proj.companies[name] = { items: [], brandCandidates: [], contactCandidates: [], extracted: false };
+    }
+    // 古い会社名に他の写真がなければ削除
+    if (oldName && oldName !== name) {
+      var stillUsed = proj.photos.some(function(ph){ return ph.companyName === oldName; });
+      if (!stillUsed) delete proj.companies[oldName];
     }
     saveCurrentProject(proj);
     closeModal('nameModal');
@@ -830,8 +837,8 @@ function getCompanyList(proj) {
 
 function renderItemCard(item, companyName, idx) {
   var id = 'item_' + companyName.replace(/\s/g,'_') + '_' + idx;
-  var html = '<div class="item-card sel" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
-  html += '<div class="item-chk">✓</div>';
+  var html = '<div class="item-card" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
+  html += '<div class="item-chk"></div>';
   html += '<div class="itag">' + esc(item.category || 'アイテム') + '</div>';
   html += '<div class="iname">' + esc(item.itemName || '') + '</div>';
   html += '<div class="iprice">' + (item.price ? '¥' + Number(item.price).toLocaleString() : '') + '</div>';
