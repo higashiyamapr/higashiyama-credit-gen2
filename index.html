@@ -729,7 +729,7 @@ function renderV1Legend(proj) {
 // NAME MODAL
 // =====================================================================
 var APP_lbPhotoIdx = null;
-var APP_selectedItems = {}; // {company::idx: true}
+var APP_selectedItems = {}; // {company + '\x00' + idx: true} — 区切りに\x00を使い衝突回避
 function openPhotoLightbox(photoIdx) {
   var proj = getCurrentProject();
   if (!proj || !proj.photos[photoIdx]) return;
@@ -869,11 +869,8 @@ function renderV2() {
 
   scrollWrap.innerHTML = colsHtml;
   // メモリの選択状態をDOMに反映
-  Object.keys(APP_selectedItems).forEach(function(key) {
-    var parts = key.split('::');
-    var co = parts[0]; var idx = parts[1];
-    var id = 'item_' + co.replace(/\s/g,'_') + '_' + idx;
-    var card = document.getElementById('card_' + id);
+  Object.keys(APP_selectedItems).forEach(function(cardId) {
+    var card = document.getElementById(cardId);
     if (card) { card.classList.add('sel'); var chk = card.querySelector('.item-chk'); if (chk) chk.textContent = '✓'; }
   });
 
@@ -901,8 +898,10 @@ function getCompanyList(proj) {
 var CAT_OPTIONS = ['トップス','ボトムス','アウター','ワンピース','シューズ','バッグ','アクセサリー','その他'];
 function renderItemCard(item, companyName, idx) {
   var id = 'item_' + companyName.replace(/\s/g,'_') + '_' + idx;
-  var escapedCo = esc(companyName).replace(/"/g,'&quot;');
-  var html = '<div class="item-card" id="card_' + id + '" data-company="' + escapedCo + '" data-idx="' + idx + '" onclick="toggleItem(\'card_' + id + '\')">';
+  // 選択キーをグローバルマップに登録（文字列変換なしで安全に照合）
+  if (!APP._cardKeys) APP._cardKeys = {};
+  APP._cardKeys['card_' + id] = { company: companyName, idx: idx };
+  var html = '<div class="item-card" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
   html += '<div class="item-chk"></div>';
   // カテゴリタップで展開
   html += '<div class="itag" id="itag_' + id + '" onclick="event.stopPropagation();toggleCatPicker(\'' + id + '\')">' + esc(item.category || 'アイテム') + ' ▾</div>';
@@ -1064,16 +1063,12 @@ function toggleItem(cardId) {
   card.classList.toggle('sel');
   var chk = card.querySelector('.item-chk');
   if (chk) chk.textContent = card.classList.contains('sel') ? '✓' : '';
-  // 選択状態をメモリに保存
-  var co = card.getAttribute('data-company');
-  var idx = card.getAttribute('data-idx');
-  if (co !== null && idx !== null) {
-    var key = co + '::' + idx;
-    if (card.classList.contains('sel')) {
-      APP_selectedItems[key] = true;
-    } else {
-      delete APP_selectedItems[key];
-    }
+  // グローバルマップで選択状態を管理
+  if (!APP._cardKeys) APP._cardKeys = {};
+  if (card.classList.contains('sel')) {
+    APP_selectedItems[cardId] = true;
+  } else {
+    delete APP_selectedItems[cardId];
   }
 }
 function toggleDrawerById(drawerId) {
@@ -1197,11 +1192,16 @@ var ntMode = 'kana';
 function buildCreditsFromSelected() {
   var proj = getCurrentProject();
   if (!proj) return;
-  var allItems = getAllItems(proj);
-  // メモリに保存された選択状態を使う
-  var selectedItems = allItems.filter(function(item) {
-    var key = item._company + '::' + item._id.split('::')[1];
-    return APP_selectedItems[key] === true;
+  if (!APP._cardKeys) APP._cardKeys = {};
+  // 選択されたcardIdからcompany/idxを取得
+  var selectedItems = [];
+  Object.keys(APP_selectedItems).forEach(function(cardId) {
+    var info = APP._cardKeys[cardId];
+    if (!info) return;
+    var cn = info.company;
+    var idx = info.idx;
+    var item = (proj.companies[cn] && proj.companies[cn].items) ? proj.companies[cn].items[idx] : null;
+    if (item) selectedItems.push(Object.assign({}, item, { _company: cn, _id: cn + '::' + idx }));
   });
   if (selectedItems.length === 0) {
     toast('アイテムを選択してください');
