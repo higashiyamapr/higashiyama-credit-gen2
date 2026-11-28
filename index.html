@@ -892,7 +892,8 @@ function getCompanyList(proj) {
 var CAT_OPTIONS = ['トップス','ボトムス','アウター','ワンピース','シューズ','バッグ','アクセサリー','その他'];
 function renderItemCard(item, companyName, idx) {
   var id = 'item_' + companyName.replace(/\s/g,'_') + '_' + idx;
-  var html = '<div class="item-card" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
+  var escapedCo = esc(companyName).replace(/"/g,'&quot;');
+  var html = '<div class="item-card" id="card_' + id + '" data-company="' + escapedCo + '" data-idx="' + idx + '" onclick="toggleItem(\'card_' + id + '\')">';
   html += '<div class="item-chk"></div>';
   // カテゴリタップで展開
   html += '<div class="itag" id="itag_' + id + '" onclick="event.stopPropagation();toggleCatPicker(\'' + id + '\')">' + esc(item.category || 'アイテム') + ' ▾</div>';
@@ -1177,17 +1178,15 @@ function buildCreditsFromSelected() {
     toast('アイテムを選択してください');
     return;
   }
-  var selectedIds = [];
+  var selectedKeys = [];
   selectedCards.forEach(function(card) {
-    // id="card_item_会社名_idx" → item_会社名_idx
-    var rawId = card.id.replace(/^card_/, '');
-    // rawId例: item_STANDARD_MEDIA株式会社_0 → 会社名::idx を再構築
-    // allItemsの_idと照合
-    selectedIds.push(rawId);
+    var co = card.getAttribute('data-company');
+    var idx = card.getAttribute('data-idx');
+    if (co !== null && idx !== null) selectedKeys.push(co + '::' + idx);
   });
   var selectedItems = allItems.filter(function(item) {
-    var cardId = 'item_' + item._company.replace(/\s/g,'_') + '_' + item._id.split('::')[1];
-    return selectedIds.indexOf(cardId) !== -1;
+    var key = item._company + '::' + item._id.split('::')[1];
+    return selectedKeys.indexOf(key) !== -1;
   });
   if (selectedItems.length === 0) {
     toast('アイテムを選択してください');
