@@ -257,7 +257,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#fff;color:#111;font-size:
     <div class="sr-scroll-wrap" id="srScroll" onscroll="updateDots()"></div>
     <div class="scroll-dots" id="scrollDots"></div>
     <div style="padding:0 16px 16px;">
-      <button class="btn btn-black btn-full" onclick="buildCreditsFromSelected()">✨ クレジットを起こす →</button>
+      <button class="btn btn-black btn-full" onclick="buildCreditsFromSelected()">クレジットを起こす →</button>
     </div>
   </div>
 
@@ -292,7 +292,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#fff;color:#111;font-size:
     <div class="nav-item active" id="n1" onclick="goV(1)"><span class="nav-icon">📄</span><span>仕分け</span></div>
     <div class="nav-item" id="n2" onclick="goV(2)"><span class="nav-icon">📋</span><span>アイテム</span></div>
     <div class="nav-item" id="n3" onclick="goV(3)"><span class="nav-icon">🗂</span><span>ルック</span></div>
-    <div class="nav-item" id="n4" onclick="goV(4)"><span class="nav-icon">✨</span><span>クレジット</span></div>
+    <div class="nav-item" id="n4" onclick="goV(4);if(Object.keys(APP_selectedItems).length>0)buildCreditsFromSelected()"><span class="nav-icon">✦</span><span>クレジット</span></div>
   </div>
 </div>
 
