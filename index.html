@@ -68,6 +68,13 @@ body{font-family:'Noto Sans JP',sans-serif;background:#fff;color:#111;font-size:
 .ph-badge{position:absolute;bottom:3px;left:3px;right:3px;border-radius:3px;font-size:9px;padding:2px 4px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;background:rgba(0,0,0,.78);color:#fff;}
 .ph-badge.unassigned{background:rgba(180,180,180,.85);color:#555;}
 .ph-cell:active .ph-img{opacity:.7;}
+/* photo lightbox */
+.photo-lb{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.photo-lb img{max-width:95vw;max-height:75vh;object-fit:contain;border-radius:6px;}
+.photo-lb-name{color:#fff;font-size:14px;margin-top:12px;font-weight:700;}
+.photo-lb-actions{display:flex;gap:12px;margin-top:16px;}
+.photo-lb-close{position:absolute;top:16px;right:16px;color:#fff;font-size:28px;cursor:pointer;padding:8px;}
+.photo-lb-del{background:#e53935;color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;}
 /* legend */
 .sr-legend{padding:0 16px 14px;}
 .sr-legend-title{font-size:11px;color:#999;margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;}
@@ -278,6 +285,16 @@ body{font-family:'Noto Sans JP',sans-serif;background:#fff;color:#111;font-size:
     <div class="nav-item" id="n2" onclick="goV(2)"><span class="nav-icon">📋</span><span>アイテム</span></div>
     <div class="nav-item" id="n3" onclick="goV(3)"><span class="nav-icon">🗂</span><span>ルック</span></div>
     <div class="nav-item" id="n4" onclick="goV(4)"><span class="nav-icon">✨</span><span>クレジット</span></div>
+  </div>
+</div>
+
+<!-- LIGHTBOX: 写真拡大 -->
+<div id="photoLightbox" style="display:none;" class="photo-lb" onclick="closePhotoLightbox()">
+  <span class="photo-lb-close" onclick="closePhotoLightbox()">✕</span>
+  <img id="lbImg" src="" alt="" onclick="event.stopPropagation()">
+  <div class="photo-lb-name" id="lbName"></div>
+  <div class="photo-lb-actions">
+    <button class="photo-lb-del" onclick="event.stopPropagation();deletePhotoFromLightbox()">🗑 この写真を削除</button>
   </div>
 </div>
 
@@ -671,9 +688,9 @@ function renderV1PhotoGrid(proj, loading) {
   html += '<div class="photo-grid">';
   proj.photos.forEach(function(ph, idx) {
     var isUnknown = !ph.companyName || ph.companyName === '判別中...' || ph.companyName === '不明';
-    html += '<div class="ph-cell" onclick="openNameModal(' + idx + ')">';
-    html += '<img class="ph-img" src="' + ph.dataUrl + '" alt="">';
-    html += '<div class="ph-badge' + (isUnknown ? ' unassigned' : '') + '">' + esc(ph.companyName || '？') + '</div>';
+    html += '<div class="ph-cell">';
+    html += '<img class="ph-img" src="' + ph.dataUrl + '" alt="" onclick="openPhotoLightbox(' + idx + ')">';
+    html += '<div class="ph-badge' + (isUnknown ? ' unassigned' : '') + '" onclick="openNameModal(' + idx + ')">' + esc(ph.companyName || '？') + '</div>';
     html += '</div>';
   });
   html += '</div>';
@@ -703,6 +720,42 @@ function renderV1Legend(proj) {
 // =====================================================================
 // NAME MODAL
 // =====================================================================
+var APP_lbPhotoIdx = null;
+function openPhotoLightbox(photoIdx) {
+  var proj = getCurrentProject();
+  if (!proj || !proj.photos[photoIdx]) return;
+  var ph = proj.photos[photoIdx];
+  var cached = (APP.photosCache[proj.id] || []).find(function(c){ return c.id === ph.id; });
+  var src = (cached && cached.dataUrl) ? cached.dataUrl : ph.dataUrl;
+  if (!src) { toast('写真データがありません'); return; }
+  APP_lbPhotoIdx = photoIdx;
+  document.getElementById('lbImg').src = src;
+  document.getElementById('lbName').textContent = ph.companyName || '？';
+  document.getElementById('photoLightbox').style.display = 'flex';
+}
+function closePhotoLightbox() {
+  document.getElementById('photoLightbox').style.display = 'none';
+  APP_lbPhotoIdx = null;
+}
+function deletePhotoFromLightbox() {
+  if (APP_lbPhotoIdx === null) return;
+  var proj = getCurrentProject();
+  if (!proj) return;
+  var ph = proj.photos[APP_lbPhotoIdx];
+  var name = ph.companyName || '？';
+  if (!confirm('「' + name + '」の写真を削除しますか？')) return;
+  // キャッシュからも削除
+  if (APP.photosCache[proj.id]) {
+    APP.photosCache[proj.id] = APP.photosCache[proj.id].filter(function(c){ return c.id !== ph.id; });
+  }
+  proj.photos.splice(APP_lbPhotoIdx, 1);
+  saveCurrentProject(proj);
+  closePhotoLightbox();
+  renderV1PhotoGrid(proj, false);
+  renderV1Legend(proj);
+  document.getElementById('v1Actions').style.display = proj.photos.length > 0 ? 'block' : 'none';
+  toast('写真を削除しました');
+}
 function openNameModal(photoIdx) {
   var proj = getCurrentProject();
   if (!proj || !proj.photos[photoIdx]) return;
@@ -830,8 +883,8 @@ function getCompanyList(proj) {
 
 function renderItemCard(item, companyName, idx) {
   var id = 'item_' + companyName.replace(/\s/g,'_') + '_' + idx;
-  var html = '<div class="item-card sel" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
-  html += '<div class="item-chk">✓</div>';
+  var html = '<div class="item-card" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
+  html += '<div class="item-chk"></div>';
   html += '<div class="itag">' + esc(item.category || 'アイテム') + '</div>';
   html += '<div class="iname">' + esc(item.itemName || '') + '</div>';
   html += '<div class="iprice">' + (item.price ? '¥' + Number(item.price).toLocaleString() : '') + '</div>';
