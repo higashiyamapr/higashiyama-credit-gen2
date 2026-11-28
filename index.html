@@ -729,6 +729,7 @@ function renderV1Legend(proj) {
 // NAME MODAL
 // =====================================================================
 var APP_lbPhotoIdx = null;
+var APP_selectedItems = {}; // {company::idx: true}
 function openPhotoLightbox(photoIdx) {
   var proj = getCurrentProject();
   if (!proj || !proj.photos[photoIdx]) return;
@@ -867,6 +868,14 @@ function renderV2() {
   });
 
   scrollWrap.innerHTML = colsHtml;
+  // メモリの選択状態をDOMに反映
+  Object.keys(APP_selectedItems).forEach(function(key) {
+    var parts = key.split('::');
+    var co = parts[0]; var idx = parts[1];
+    var id = 'item_' + co.replace(/\s/g,'_') + '_' + idx;
+    var card = document.getElementById('card_' + id);
+    if (card) { card.classList.add('sel'); var chk = card.querySelector('.item-chk'); if (chk) chk.textContent = '✓'; }
+  });
 
   // dots
   var dotsHtml = '';
@@ -946,11 +955,15 @@ async function extractItems(companyName) {
   var photos = proj.photos.filter(function(ph){ return ph.companyName === companyName; });
   if (!photos.length) { toast('この貸出先の写真がありません'); return; }
 
-  toast(companyName + ' の伝票を読み取り中...');
+  // ボタンを読み取り中表示に変える
+  var btns = document.querySelectorAll('button');
+  var targetBtn = null;
+  btns.forEach(function(b) { if (b.textContent.indexOf('読み取る') !== -1 || b.textContent.indexOf('再読み取り') !== -1) { if (b.closest && b.closest('.sr-col')) { var col = b.closest('.sr-col'); var colName = col.querySelector('.sr-col-name'); if (colName && colName.textContent === companyName) targetBtn = b; } } });
+  if (targetBtn) { targetBtn.disabled = true; targetBtn.textContent = '⏳ 読み取り中...'; }
+
   try {
     var photosData = photos.map(function(ph){ return { base64: ph.base64, mimeType: ph.mimeType }; });
     var result = await geminiExtractItems(photosData, companyName);
-    // getCurrentProject()はlocalStorageから読むのでbase64が消える→再取得しない
     if (!proj.companies[companyName]) proj.companies[companyName] = {};
     proj.companies[companyName].items = result.items || [];
     proj.companies[companyName].brandCandidates = result.brandCandidates || [];
@@ -958,9 +971,11 @@ async function extractItems(companyName) {
     proj.companies[companyName].extracted = true;
     saveCurrentProject(proj);
     renderV2();
-    toast(companyName + ' の読み取り完了：' + (result.items || []).length + '件');
+    toast('✅ ' + companyName + ' 読み取り完了：' + (result.items || []).length + '件');
   } catch(e) {
-    toast('エラー: ' + (e.message || '読み取りに失敗しました'));
+    // エラー時は再読み取りボタンを出す
+    if (targetBtn) { targetBtn.disabled = false; targetBtn.textContent = '🔄 再読み取り'; }
+    toast('❌ エラー: ' + (e.message || '読み取りに失敗しました') + '　もう一度タップしてください');
   }
 }
 
@@ -1049,6 +1064,17 @@ function toggleItem(cardId) {
   card.classList.toggle('sel');
   var chk = card.querySelector('.item-chk');
   if (chk) chk.textContent = card.classList.contains('sel') ? '✓' : '';
+  // 選択状態をメモリに保存
+  var co = card.getAttribute('data-company');
+  var idx = card.getAttribute('data-idx');
+  if (co !== null && idx !== null) {
+    var key = co + '::' + idx;
+    if (card.classList.contains('sel')) {
+      APP_selectedItems[key] = true;
+    } else {
+      delete APP_selectedItems[key];
+    }
+  }
 }
 function toggleDrawerById(drawerId) {
   var d = document.getElementById(drawerId);
@@ -1169,24 +1195,13 @@ function removeFromLook(lookId, iid) {
 var ntMode = 'kana';
 
 function buildCreditsFromSelected() {
-  // チェックONのアイテムだけ収集
   var proj = getCurrentProject();
   if (!proj) return;
   var allItems = getAllItems(proj);
-  var selectedCards = document.querySelectorAll('.item-card.sel');
-  if (selectedCards.length === 0) {
-    toast('アイテムを選択してください');
-    return;
-  }
-  var selectedKeys = [];
-  selectedCards.forEach(function(card) {
-    var co = card.getAttribute('data-company');
-    var idx = card.getAttribute('data-idx');
-    if (co !== null && idx !== null) selectedKeys.push(co + '::' + idx);
-  });
+  // メモリに保存された選択状態を使う
   var selectedItems = allItems.filter(function(item) {
     var key = item._company + '::' + item._id.split('::')[1];
-    return selectedKeys.indexOf(key) !== -1;
+    return APP_selectedItems[key] === true;
   });
   if (selectedItems.length === 0) {
     toast('アイテムを選択してください');
