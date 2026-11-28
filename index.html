@@ -91,7 +91,15 @@ body{font-family:'Noto Sans JP',sans-serif;background:#fff;color:#111;font-size:
 .item-card.sel{border-color:#111;background:#f9f9f9;}
 .item-chk{position:absolute;top:10px;right:10px;width:22px;height:22px;border:1.5px solid #ddd;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;background:#fff;}
 .item-card.sel .item-chk{background:#111;border-color:#111;color:#fff;}
-.itag{display:inline-block;background:#ebebeb;border-radius:3px;padding:2px 7px;font-size:10px;color:#555;margin-bottom:4px;}
+.itag{display:inline-block;background:#ebebeb;border-radius:3px;padding:2px 7px;font-size:10px;color:#555;margin-bottom:4px;cursor:pointer;user-select:none;}
+.itag:active{background:#ddd;}
+.cat-picker{display:none;flex-wrap:wrap;gap:5px;margin:6px 0 4px;padding:8px;background:#f5f5f5;border-radius:8px;}
+.cat-picker.open{display:flex;}
+.cat-chip{padding:5px 11px;border-radius:14px;border:1.5px solid #ddd;font-size:12px;color:#555;background:#fff;cursor:pointer;white-space:nowrap;}
+.cat-chip:active{background:#eee;}
+.cat-chip.selected{background:#111;color:#fff;border-color:#111;}
+.cat-custom-input{width:100%;border:1.5px solid #e0e0e0;border-radius:7px;padding:7px 10px;font-size:13px;margin-top:5px;outline:none;display:none;}
+.cat-custom-input.open{display:block;}
 .iname{font-size:14px;font-weight:700;margin-bottom:2px;padding-right:28px;}
 .iprice{font-size:13px;color:#555;margin-bottom:1px;}
 .ibrand{font-size:12px;color:#999;}
@@ -249,7 +257,7 @@ body{font-family:'Noto Sans JP',sans-serif;background:#fff;color:#111;font-size:
     <div class="sr-scroll-wrap" id="srScroll" onscroll="updateDots()"></div>
     <div class="scroll-dots" id="scrollDots"></div>
     <div style="padding:0 16px 16px;">
-      <button class="btn btn-black btn-full" onclick="goV(3)">ルックに振り分ける →</button>
+      <button class="btn btn-black btn-full" onclick="buildCreditsFromSelected()">✨ クレジットを起こす →</button>
     </div>
   </div>
 
@@ -881,11 +889,20 @@ function getCompanyList(proj) {
   return list;
 }
 
+var CAT_OPTIONS = ['トップス','ボトムス','アウター','ワンピース','シューズ','バッグ','アクセサリー','その他'];
 function renderItemCard(item, companyName, idx) {
   var id = 'item_' + companyName.replace(/\s/g,'_') + '_' + idx;
   var html = '<div class="item-card" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
   html += '<div class="item-chk"></div>';
-  html += '<div class="itag">' + esc(item.category || 'アイテム') + '</div>';
+  // カテゴリタップで展開
+  html += '<div class="itag" id="itag_' + id + '" onclick="event.stopPropagation();toggleCatPicker(\'' + id + '\')">' + esc(item.category || 'アイテム') + ' ▾</div>';
+  html += '<div class="cat-picker" id="catpick_' + id + '">';
+  CAT_OPTIONS.forEach(function(c) {
+    var sel = (item.category === c) ? ' selected' : '';
+    html += '<div class="cat-chip' + sel + '" onclick="event.stopPropagation();selectCat(\'' + id + '\',\'' + esc(companyName).replace(/'/g,"&#39;") + '\',' + idx + ',\'' + c + '\')">' + c + '</div>';
+  });
+  html += '<input class="cat-custom-input" id="catcustom_' + id + '" placeholder="カテゴリを入力" value="' + (CAT_OPTIONS.indexOf(item.category) === -1 && item.category ? esc(item.category) : '') + '" onclick="event.stopPropagation()" oninput="saveCatCustom(\'' + id + '\',\'' + esc(companyName).replace(/'/g,"&#39;") + '\',' + idx + ',this.value)">';
+  html += '</div>';
   html += '<div class="iname">' + esc(item.itemName || '') + '</div>';
   html += '<div class="iprice">' + (item.price ? '¥' + Number(item.price).toLocaleString() : '') + '</div>';
   html += '<div class="ibrand">' + esc(item.brandAlpha || '') + (item.brandAlpha && item.brandKana ? ' / ' : '') + esc(item.brandKana || '') + '</div>';
@@ -972,6 +989,58 @@ function pickChip(inputId, val, chipsId) {
   var el = document.getElementById(chipsId);
   if (el) el.style.display = 'none';
   toast('「' + val + '」を選択');
+}
+function toggleCatPicker(id) {
+  var picker = document.getElementById('catpick_' + id);
+  if (!picker) return;
+  picker.classList.toggle('open');
+  // その他が現在選択中なら入力欄も開く
+  var customIn = document.getElementById('catcustom_' + id);
+  var tag = document.getElementById('itag_' + id);
+  if (customIn && tag) {
+    var cur = tag.textContent.replace(' ▾','').trim();
+    if (CAT_OPTIONS.indexOf(cur) === -1 && cur && cur !== 'アイテム') {
+      customIn.classList.toggle('open', picker.classList.contains('open'));
+    }
+  }
+}
+function selectCat(id, companyName, idx, cat) {
+  var proj = getCurrentProject();
+  if (!proj || !proj.companies[companyName]) return;
+  var customIn = document.getElementById('catcustom_' + id);
+  if (cat === 'その他') {
+    // その他：入力欄を表示
+    if (customIn) { customIn.classList.add('open'); customIn.focus(); }
+    // チップのselected更新
+    updateCatChips(id, cat);
+    return;
+  }
+  if (customIn) customIn.classList.remove('open');
+  proj.companies[companyName].items[idx].category = cat;
+  saveCurrentProject(proj);
+  // タグ更新
+  var tag = document.getElementById('itag_' + id);
+  if (tag) tag.textContent = cat + ' ▾';
+  updateCatChips(id, cat);
+  // ピッカーを閉じる
+  var picker = document.getElementById('catpick_' + id);
+  if (picker) picker.classList.remove('open');
+  toast('カテゴリを「' + cat + '」に変更しました');
+}
+function saveCatCustom(id, companyName, idx, val) {
+  var proj = getCurrentProject();
+  if (!proj || !proj.companies[companyName]) return;
+  proj.companies[companyName].items[idx].category = val;
+  saveCurrentProject(proj);
+  var tag = document.getElementById('itag_' + id);
+  if (tag) tag.textContent = (val || 'アイテム') + ' ▾';
+}
+function updateCatChips(id, selected) {
+  var picker = document.getElementById('catpick_' + id);
+  if (!picker) return;
+  picker.querySelectorAll('.cat-chip').forEach(function(chip) {
+    chip.classList.toggle('selected', chip.textContent === selected);
+  });
 }
 function toggleItem(cardId) {
   var card = document.getElementById(cardId);
@@ -1098,6 +1167,47 @@ function removeFromLook(lookId, iid) {
 // =====================================================================
 var ntMode = 'kana';
 
+function buildCreditsFromSelected() {
+  // チェックONのアイテムだけ収集
+  var proj = getCurrentProject();
+  if (!proj) return;
+  var allItems = getAllItems(proj);
+  var selectedCards = document.querySelectorAll('.item-card.sel');
+  if (selectedCards.length === 0) {
+    toast('アイテムを選択してください');
+    return;
+  }
+  var selectedIds = [];
+  selectedCards.forEach(function(card) {
+    // id="card_item_会社名_idx" → item_会社名_idx
+    var rawId = card.id.replace(/^card_/, '');
+    // rawId例: item_STANDARD_MEDIA株式会社_0 → 会社名::idx を再構築
+    // allItemsの_idと照合
+    selectedIds.push(rawId);
+  });
+  var selectedItems = allItems.filter(function(item) {
+    var cardId = 'item_' + item._company.replace(/\s/g,'_') + '_' + item._id.split('::')[1];
+    return selectedIds.indexOf(cardId) !== -1;
+  });
+  if (selectedItems.length === 0) {
+    toast('アイテムを選択してください');
+    return;
+  }
+  var groups = groupByContact(selectedItems);
+  var text = buildCreditText(groups, ntMode);
+  var html = '<div class="credit-block">';
+  html += '<div class="credit-look-label"><span>選択したアイテム</span>';
+  html += '<button class="btn btn-ghost btn-sm" onclick="copyCreditLook(\'cta_0\')" style="font-size:11px;padding:3px 10px;">まとめてコピー</button></div>';
+  html += '<div style="padding:12px 14px;">';
+  html += '<textarea class="credit-edit" id="cta_0" style="min-height:' + Math.max(80, text.split('\n').length * 28) + 'px;">' + esc(text) + '</textarea>';
+  html += '<div style="font-size:11px;color:#bbb;margin-top:5px;">自由に編集できます。「／ともに」なども手入力で。</div>';
+  html += '</div></div>';
+  document.getElementById('creditBlocks').innerHTML = html;
+  buildInquiryList(proj, allItems);
+  buildShippingList(proj, allItems);
+  goV(4);
+}
+
 function buildCredits() {
   var proj = getCurrentProject();
   if (!proj) return;
@@ -1106,7 +1216,6 @@ function buildCredits() {
 
   (proj.looks || []).forEach(function(look, li) {
     var lookItems = look.itemIds.map(function(iid){ return allItems.find(function(x){ return x._id === iid; }); }).filter(Boolean);
-    // group by contactName
     var groups = groupByContact(lookItems);
     var text = buildCreditText(groups, ntMode);
 
@@ -1120,8 +1229,6 @@ function buildCredits() {
   });
 
   document.getElementById('creditBlocks').innerHTML = html;
-
-  // inquiry list
   buildInquiryList(proj, allItems);
   buildShippingList(proj, allItems);
 }
@@ -1146,7 +1253,9 @@ function buildCreditText(groups, mode) {
     if (gi > 0) lines.push(''); // blank between different brand groups
     g.items.forEach(function(item) {
       var price = item.price ? '　¥' + Number(item.price).toLocaleString() : '';
-      lines.push(esc2(item.category || item.itemName || '') + price);
+      var cat = item.category ? esc2(item.category) + '　' : '';
+      var name = esc2(item.itemName || '');
+      lines.push(cat + name + price);
     });
     var brand = mode === 'kana' ? g.brandKana : g.brandAlpha;
     if (brand) lines.push(esc2(brand));
