@@ -342,7 +342,8 @@ var APP = {
   currentProjId: null,
   nameModalTargetPhotoIdx: null,
   ntMode: 'kana', // 'kana' | 'alpha'
-  photosCache: {} // {projId: [{id, dataUrl, base64, mimeType, companyName}]} — メモリ内のみ
+  photosCache: {}, // {projId: [{id, dataUrl, base64, mimeType, companyName}]} — メモリ内のみ
+  _cardKeys: {}    // {cardId: {company, idx}} — アイテムカードの照合用
 };
 
 // =====================================================================
@@ -899,7 +900,6 @@ var CAT_OPTIONS = ['トップス','ボトムス','アウター','ワンピース
 function renderItemCard(item, companyName, idx) {
   var id = 'item_' + companyName.replace(/\s/g,'_') + '_' + idx;
   // 選択キーをグローバルマップに登録（文字列変換なしで安全に照合）
-  if (!APP._cardKeys) APP._cardKeys = {};
   APP._cardKeys['card_' + id] = { company: companyName, idx: idx };
   var html = '<div class="item-card" id="card_' + id + '" onclick="toggleItem(\'card_' + id + '\')">';
   html += '<div class="item-chk"></div>';
@@ -1064,7 +1064,6 @@ function toggleItem(cardId) {
   var chk = card.querySelector('.item-chk');
   if (chk) chk.textContent = card.classList.contains('sel') ? '✓' : '';
   // グローバルマップで選択状態を管理
-  if (!APP._cardKeys) APP._cardKeys = {};
   if (card.classList.contains('sel')) {
     APP_selectedItems[cardId] = true;
   } else {
@@ -1192,7 +1191,6 @@ var ntMode = 'kana';
 function buildCreditsFromSelected() {
   var proj = getCurrentProject();
   if (!proj) return;
-  if (!APP._cardKeys) APP._cardKeys = {};
   // 選択されたcardIdからcompany/idxを取得
   var selectedItems = [];
   Object.keys(APP_selectedItems).forEach(function(cardId) {
@@ -1217,6 +1215,7 @@ function buildCreditsFromSelected() {
   html += '<div style="font-size:11px;color:#bbb;margin-top:5px;">自由に編集できます。「／ともに」なども手入力で。</div>';
   html += '</div></div>';
   document.getElementById('creditBlocks').innerHTML = html;
+  var allItems = getAllItems(proj);
   buildInquiryList(proj, allItems);
   buildShippingList(proj, allItems);
   goV(4);
